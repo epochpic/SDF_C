@@ -12,8 +12,15 @@ set(SOURCES
    sdf_modify.c sdf_output.c sdf_util.c stack_allocator.c
    )
 
-add_library(sdfc STATIC ${SOURCES} commit_info.h)
-set_target_properties(sdfc PROPERTIES POSITION_INDEPENDENT_CODE True)
+add_library(objlib OBJECT ${SOURCES} commit_info.h)
+
+# shared libraries need PIC
+set_property(TARGET objlib PROPERTY POSITION_INDEPENDENT_CODE 1)
+
+# shared and static libraries built from the same object files
+add_library(sdfc_shared EXCLUDE_FROM_ALL SHARED $<TARGET_OBJECTS:objlib>)
+add_library(sdfc STATIC $<TARGET_OBJECTS:objlib>)
+
 if(PARALLEL)
    set_source_files_properties(
        ${SOURCES}
