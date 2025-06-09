@@ -37,7 +37,7 @@ extern "C" {
 
  @return 0 on success, 1 on error
  */
-int sdf_helper_read_data(sdf_file_t *h, sdf_block_t *b);
+_EXPORT int sdf_helper_read_data(sdf_file_t *h, sdf_block_t *b);
 
 #ifdef __cplusplus
 }

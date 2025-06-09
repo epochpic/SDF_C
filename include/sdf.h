@@ -37,6 +37,12 @@
 
 #define SDF_MAXDIMS 4
 
+#ifdef _WIN32
+#  define _EXPORT __declspec( dllexport )
+#else
+#  define _EXPORT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -396,6 +402,7 @@ struct run_info {
     sdf_file_t *h = sdf_open("myfile.sdf", MPI_COMM_WORLD, SDF_READ, 0);
  @endcode
  */
+_EXPORT
 sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap);
 
 
@@ -422,7 +429,7 @@ int sdf_close(sdf_file_t *h);
 
  @return 0 on success, 1 on error
  */
-int sdf_free_blocklist_data(sdf_file_t *h);
+_EXPORT int sdf_free_blocklist_data(sdf_file_t *h);
 
 
 /**
@@ -495,7 +502,7 @@ int sdf_read_summary(sdf_file_t *h);
 
  @return 0 on success, 1 on error
  */
-int sdf_read_blocklist(sdf_file_t *h);
+_EXPORT int sdf_read_blocklist(sdf_file_t *h);
 
 
 /**
@@ -512,7 +519,7 @@ int sdf_read_blocklist(sdf_file_t *h);
 
  @return 0 on success, 1 on error
  */
-int sdf_read_blocklist_all(sdf_file_t *h);
+_EXPORT int sdf_read_blocklist_all(sdf_file_t *h);
 
 
 /**
@@ -767,17 +774,16 @@ int sdf_read_station_timehis(sdf_file_t *h, long *stat, int nstat,
       char **var_names, int nvars, double t0, double t1, char **timehis,
       int *size, int *offset, int *nrows, int *row_size);
 
-
 /**
  @brief Returns string containing the commit id for the library
  */
-char *sdf_get_library_commit_id(void);
+_EXPORT char *sdf_get_library_commit_id(void);
 
 
 /**
  @brief Returns string containing the commit date for the library
  */
-char *sdf_get_library_commit_date(void);
+_EXPORT char *sdf_get_library_commit_date(void);
 
 
 /**
