@@ -39,8 +39,8 @@ void sdf_stack_free_block(sdf_file_t *h, sdf_block_t *b);
 void sdf_stack_push_to_bottom(sdf_file_t *h, sdf_block_t *b);
 void sdf_stack_freeup_memory(sdf_file_t *h);
 void sdf_stack_free(sdf_file_t *h);
-void sdf_stack_destroy(sdf_file_t *h);
-void sdf_stack_init(sdf_file_t *h);
+_EXPORT void sdf_stack_destroy(sdf_file_t *h);
+_EXPORT void sdf_stack_init(sdf_file_t *h);
 
 #ifdef __cplusplus
 }
