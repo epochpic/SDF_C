@@ -2842,6 +2842,7 @@ int sdf_add_derived_blocks_final(sdf_file_t *h)
                 gb = sdf_find_block_by_id(h, b->variable_ids[i]);
                 if (!gb) continue;
                 gb->dont_display = 1;
+                if (!gb->variable_ids) continue;
                 for (n = 0 ; n < gb->ndims ; n++) {
                     sb = sdf_find_block_by_id(h, gb->variable_ids[n]);
                     sb->dont_display = 1;
