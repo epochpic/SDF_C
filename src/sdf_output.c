@@ -1106,7 +1106,7 @@ int64_t sdf_write_new_summary(sdf_file_t *h)
     sdf_block_t *b, *next;
     int64_t total_summary_size = 0, extent = h->first_block_location;
     int64_t summary_size, sz;
-    int errcode = 0, use_summary;
+    int use_summary;
 
     // First find the furthest extent of the inline metadata and/or data
     next = h->blocklist;
@@ -1137,7 +1137,7 @@ int64_t sdf_write_new_summary(sdf_file_t *h)
         b->summary_block_start = b->block_start = h->current_location;
         b->summary_next_block_location = b->next_block_location
                 = b->block_start + summary_size;
-        errcode += write_meta(h);
+        write_meta(h);
     }
     sdf_truncate(h, h->current_location);
     h->use_summary = use_summary;
@@ -1153,10 +1153,8 @@ static int sdf_write_header(sdf_file_t *h, char *code_name, int code_io_version,
         int step, double time, char restart, char station_file, int jobid1,
         int jobid2)
 {
-    int errcode = 0;
-
     if (h->code_name) free(h->code_name);
-    errcode += safe_copy_string(code_name, h->code_name);
+    safe_copy_string(code_name, h->code_name);
 
     h->step = step;
     h->time = time;
