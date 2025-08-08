@@ -713,7 +713,8 @@ int sdf_read_lagran_mesh(sdf_file_t *h)
             h->current_location = h->current_location
                     + SDF_TYPE_SIZES[b->datatype] * nelements;
         } else {
-            b->grids[n] = calloc(1, SDF_TYPE_SIZES[b->datatype]);
+            if (!b->grids[n])
+                b->grids[n] = calloc(1, SDF_TYPE_SIZES[b->datatype]);
         }
     }
 
