@@ -40,6 +40,7 @@ static int write_stitched_species(sdf_file_t *h);
 static int write_run_info_meta(sdf_file_t *h);
 static int write_data(sdf_file_t *h);
 
+static int32_t summary_offset_pos;
 
 
 int sdf_write_bytes(sdf_file_t *h, void *buf, int buflen)
@@ -264,25 +265,32 @@ static int write_header(sdf_file_t *h)
 
     if (h->rank == h->rank_master) {
         errcode += sdf_seek(h);
+        summary_offset_pos = h->current_location;
 
         // Write the header
         errcode += sdf_write_bytes(h, SDF_MAGIC, 4);
+        summary_offset_pos += 4;
 
         int4 = SDF_ENDIANNESS;
         errcode += sdf_write_bytes(h, &int4, SOI4);
+        summary_offset_pos += SOI4;
 
         int4 = SDF_VERSION;
         errcode += sdf_write_bytes(h, &int4, SOI4);
+        summary_offset_pos += SOI4;
 
         int4 = SDF_REVISION;
         errcode += sdf_write_bytes(h, &int4, SOI4);
+        summary_offset_pos += SOI4;
 
         if (h->code_name == NULL)
             errcode += sdf_safe_write_id(h, "");
         else
             errcode += sdf_safe_write_id(h, h->code_name);
+        summary_offset_pos += h->id_length;
 
         errcode += sdf_write_bytes(h, &h->first_block_location, SOI8);
+        summary_offset_pos += SOI8;
 
         // Must be consistent with the c_summary_offset in sdf_common
         errcode += sdf_write_bytes(h, &h->summary_location, SOI8);
@@ -1150,10 +1158,15 @@ int64_t sdf_write_new_summary(sdf_file_t *h)
                 = b->block_start + summary_size;
         write_meta(h);
     }
-    sdf_truncate(h, h->current_location);
     h->use_summary = use_summary;
-
     h->summary_size = total_summary_size;
+
+    // Update header
+    sdf_seek_set(h, summary_offset_pos);
+    sdf_write_bytes(h, &h->summary_location, SOI8);
+    sdf_write_bytes(h, &h->summary_size, SOI4);
+    sdf_write_bytes(h, &h->nblocks, SOI4);
+    sdf_truncate(h, h->current_location);
 
     return total_summary_size;
 }
