@@ -115,4 +115,15 @@ void sdf_set_code_name(sdf_file_t *h, char *value)
     h->code_name = sdf_set_id(h, value);
 }
 
+
+void sdf_set_block_name(sdf_file_t *h, char *id, char *name)
+{
+    sdf_block_t *b = h->current_block;
+
+    if (b->id) free(b->id);
+    if (b->name) free(b->name);
+    b->id = sdf_set_id(h, id);
+    b->name = sdf_set_string(h, name);
+}
+
 /**@}*/
