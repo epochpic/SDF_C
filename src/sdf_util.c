@@ -87,4 +87,32 @@ void sdf_hash_block_list(sdf_file_t *h)
         b = b->next;
     }
 }
+
+
+static inline char *sdf_set_entry_stringlen(char *value, size_t length)
+{
+    char *ptr = calloc(length+1, sizeof(char));
+    strncpy(ptr, value, length);
+    return ptr;
+}
+
+
+static inline char *sdf_set_id(sdf_file_t *h, char *value)
+{
+    return sdf_set_entry_stringlen(value, h->id_length);
+}
+
+
+static inline char *sdf_set_string(sdf_file_t *h, char *value)
+{
+    return sdf_set_entry_stringlen(value, h->string_length);
+}
+
+
+void sdf_set_code_name(sdf_file_t *h, char *value)
+{
+    if (h->code_name) free(h->code_name);
+    h->code_name = sdf_set_id(h, value);
+}
+
 /**@}*/
