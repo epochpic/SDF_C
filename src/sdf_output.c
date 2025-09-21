@@ -1070,15 +1070,12 @@ int sdf_write_meta(sdf_file_t *h)
 
 
 
-static int write_data(sdf_file_t *h)
+static int write_only_data(sdf_file_t *h)
 {
     int errcode = 0, i;
     sdf_block_t *b = h->current_block;
 
     if (!b || !b->in_file) return 0;
-
-    // Write header
-    errcode = write_meta(h);
 
     if (h->rank == h->rank_master) {
         errcode += sdf_seek_set(h, b->data_location);
@@ -1095,6 +1092,20 @@ static int write_data(sdf_file_t *h)
 
     h->current_location = b->data_location + b->data_length;
     b->done_data = 1;
+
+    return errcode;
+}
+
+
+
+static int write_data(sdf_file_t *h)
+{
+    int errcode = 0;
+
+    // Write header
+    errcode = write_meta(h);
+
+    errcode = write_only_data(h);
 
     return errcode;
 }
@@ -1168,22 +1179,84 @@ static int sdf_write_header(sdf_file_t *h, char *code_name, int code_io_version,
 
 
 
+static int sdf_update_block_locations(sdf_file_t *h)
+{
+    sdf_block_t *b;
+    int errcode;
+    int old_master = h->rank_master;
+    int old_summary = h->use_summary;
+
+    h->use_summary = 0;
+    h->rank_master = -1;
+
+    b = h->blocklist;
+    h->start_location = h->current_location = h->first_block_location;
+    while (b) {
+        h->current_block = b;
+        b->block_start = b->inline_block_start = h->current_location;
+        errcode += write_meta(h);
+        b->data_location = h->current_location;
+        errcode += write_only_data(h);
+        b->inline_next_block_location = h->current_location;
+        b = b->next;
+    }
+
+    h->inline_metadata_read = h->use_summary = 1;
+    h->summary_location = h->current_location;
+    b = h->blocklist;
+    while (b) {
+        h->current_block = b;
+        b->done_header = b->done_info = b->done_data = 0;
+        b->done_header = 0;
+        b->summary_block_start = h->current_location;
+        errcode += write_meta(h);
+        b->summary_next_block_location = h->current_location;
+        b = b->next;
+    }
+    h->summary_size = h->current_location - h->summary_location;
+
+    h->use_summary = old_summary;
+    h->rank_master = old_master;
+
+    return errcode;
+}
+
+
+
 int sdf_write(sdf_file_t *h)
 {
     int errcode;
     sdf_block_t *b;
 
+    h->use_summary = h->done_header = h->metadata_modified = 0;
     errcode = write_header(h);
-    sdf_flush(h);
+    sdf_update_block_locations(h);
 
+    h->use_summary = 0;
     b = h->blocklist;
     while (b) {
         h->current_block = b;
         b->done_header = b->done_info = b->done_data = 0;
         errcode += write_block(h);
-        //sdf_flush(h);
         b = b->next;
     }
+
+    h->use_summary = 1;
+    b = h->blocklist;
+    while (b) {
+        h->current_block = b;
+        b->done_header = b->done_info = 0;
+        errcode += write_meta(h);
+        b = b->next;
+    }
+
+    // Update header
+    sdf_seek_set(h, summary_offset_pos);
+    sdf_write_bytes(h, &h->summary_location, SOI8);
+    sdf_write_bytes(h, &h->summary_size, SOI4);
+    sdf_write_bytes(h, &h->nblocks_file, SOI4);
+
+    sdf_flush(h);
 
     return errcode;
 }
