@@ -163,6 +163,7 @@ void sdf_delete_hash_block(sdf_file_t *h, sdf_block_t *b);
 void sdf_hash_block(sdf_file_t *h, sdf_block_t *b);
 void sdf_hash_block_list(sdf_file_t *h);
 
+_EXPORT int sdf_get_next_block(sdf_file_t *h);
 _EXPORT void sdf_set_code_name(sdf_file_t *h, char *value);
 
 #ifdef __cplusplus
