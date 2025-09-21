@@ -277,7 +277,10 @@ static int write_header(sdf_file_t *h)
         int4 = SDF_REVISION;
         errcode += sdf_write_bytes(h, &int4, SOI4);
 
-        errcode += sdf_safe_write_id(h, h->code_name);
+        if (h->code_name == NULL)
+            errcode += sdf_safe_write_id(h, "");
+        else
+            errcode += sdf_safe_write_id(h, h->code_name);
 
         errcode += sdf_write_bytes(h, &h->first_block_location, SOI8);
 
