@@ -244,7 +244,7 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
     h->dbg_count = DBG_CHUNK;
     h->dbg = h->dbg_buf = malloc(h->dbg_count);
 #endif
-    h->string_length = 64;
+    h->string_length = 128;
     h->indent = 0;
 
     h->done_header = 0;

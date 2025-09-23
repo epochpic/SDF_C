@@ -19,7 +19,7 @@ extern "C" {
 #define SDF_ID_LENGTH 32
 #define SDF_HEADER_LENGTH (11 * SOI4 + 2 * SOI8 + SOF8 + 12 + h->id_length)
 #define SDF_BLOCK_HEADER_LENGTH \
-    (4 + 3 * SOI4 + 3 * SOI8 + h->id_length + h->string_length)
+    (4 * SOI4 + 3 * SOI8 + h->id_length + h->string_length)
 #define SDF_ENDIANNESS 16911887
 
 int sdf_seek_set(sdf_file_t *h, int64_t offset);
