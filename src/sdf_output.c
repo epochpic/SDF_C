@@ -120,8 +120,8 @@ static size_t trimwhitespace(const char *str_in, char *str_out, size_t len)
     out_size = i1 < i2 ? i1 : i2;
 
     // Copy trimmed string and add null terminator
+    memset(str_out, 0, len);
     memcpy(str_out, str_in, out_size);
-    str_out[out_size] = 0;
 
     return out_size;
 }
