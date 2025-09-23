@@ -70,6 +70,22 @@
 
 
 
+static char *safe_create_string(char *s1)
+{
+    int len1;
+    char *s2;
+
+    len1 = strlen(s1) + 1;
+
+    s2 = malloc(len1);
+    memcpy(s2, s1, len1);
+    s2[len1-1] = '\0';
+
+    return s2;
+}
+
+
+
 static int sdf_read_inline_block_locations(sdf_file_t *h)
 {
     sdf_block_t *b;
@@ -154,6 +170,36 @@ static void sdf_modify_rewrite_header(sdf_file_t *h)
     sdf_write_at(h, offset, &h->nblocks_file, SOI4); offset += SOI4;
 }
 
+
+
+void sdf_set_namevalue(sdf_block_t *copy, const char *names, const void *values)
+{
+    int ndims = copy->ndims;
+    int i;
+    const char **cnames = (const char **)names;
+
+    copy->material_names = malloc(ndims * sizeof(char*));
+    for (i = 0; i < ndims; ++i) {
+        uint64_t len = strlen(cnames[i]) + 1;
+        copy->material_names[i] = malloc(len * sizeof(char));
+        memcpy(copy->material_names[i], cnames[i], len);
+    }
+
+    if (copy->datatype == SDF_DATATYPE_CHARACTER) {
+        const size_t sz = ndims * SDF_TYPE_SIZES[copy->datatype];
+        const char **vals = (const char **)values;
+        const char **ovals = copy->data = malloc(sz);
+        for (i=0; i<ndims; ++i) {
+            ovals[i] = safe_create_string(vals[i]);
+        }
+    } else if (copy->datatype == SDF_DATATYPE_LOGICAL ||
+               copy->datatype == SDF_DATATYPE_INTEGER8 ||
+               copy->datatype == SDF_DATATYPE_REAL8) {
+        const size_t sz = ndims * SDF_TYPE_SIZES[copy->datatype];
+        copy->data = malloc(sz);
+        memcpy(copy->data, values, sz);
+    }
+}
 
 
 static int copy_block(sdf_block_t *copy, const sdf_block_t *original)

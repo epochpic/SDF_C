@@ -33,6 +33,7 @@
  */
 
 static int write_constant(sdf_file_t *h);
+static int write_namevalue(sdf_file_t *h);
 static int write_stitched(sdf_file_t *h);
 static int write_stitched_material(sdf_file_t *h);
 static int write_stitched_matvar(sdf_file_t *h);
@@ -221,6 +222,9 @@ static int write_block(sdf_file_t *h)
     case SDF_BLOCKTYPE_CPU_SPLIT:
         write_data(h);
         break;
+    case SDF_BLOCKTYPE_NAMEVALUE:
+        write_namevalue(h);
+        break;
     default:
         printf("WARNING! Ignored id: %s\n", b->id);
     }
@@ -405,6 +409,53 @@ static int write_constant(sdf_file_t *h)
     if (h->rank == h->rank_master) {
         errcode += sdf_write_bytes(h, &b->const_value,
                 SDF_TYPE_SIZES[b->datatype]);
+    }
+
+    h->current_location = b->block_start + b->info_length;
+    b->done_info = 1;
+    b->done_data = 1;
+
+    return errcode;
+}
+
+
+
+static int write_namevalue(sdf_file_t *h)
+{
+    int errcode, i, sz;
+    int32_t int4;
+    sdf_block_t *b = h->current_block;
+
+    if (!b || !b->in_file) return 0;
+
+    b->blocktype = SDF_BLOCKTYPE_NAMEVALUE;
+
+    sz = SDF_TYPE_SIZES[b->datatype];
+    if (b->datatype == SDF_DATATYPE_CHARACTER) sz = h->string_length;
+
+    // Metadata is
+    // - names     ndims*CHARACTER(string_length)
+    // - values    ndims*DATATYPE
+
+    b->info_length = h->block_header_length
+        + b->ndims * (h->string_length + sz);
+    b->data_length = 0;
+
+    // Write header
+    errcode = write_block_header(h);
+
+    // Write metadata
+    if (h->rank == h->rank_master) {
+        for (i=0; i < b->ndims; i++)
+            errcode += sdf_safe_write_string(h, b->material_names[i]);
+
+        if (b->datatype == SDF_DATATYPE_CHARACTER) {
+            char **arr = (char **)b->data;
+            for (i=0; i < b->ndims; i++)
+                errcode += sdf_safe_write_string(h, arr[i]);
+        } else {
+            errcode += sdf_write_bytes(h, b->data, b->ndims * sz);
+        }
     }
 
     h->current_location = b->block_start + b->info_length;
@@ -1059,6 +1110,9 @@ static int write_meta(sdf_file_t *h)
         break;
     case SDF_BLOCKTYPE_STITCHED_OBSTACLE_GROUP:
         return_value = write_stitched_obstacle_group(h);
+        break;
+    case SDF_BLOCKTYPE_NAMEVALUE:
+        return_value = write_namevalue(h);
         break;
     default:
         return_value = write_block_header(h);
