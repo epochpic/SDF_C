@@ -195,6 +195,19 @@ static void sdf_modify_rewrite_header(sdf_file_t *h)
 
 
 
+void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
+{
+    sdf_block_t *b = block;
+
+    if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE) {
+        if (b->mult == 0) b->mult = 1;
+        if (!b->units) b->units = sdf_create_id(h, "m");
+        if (!b->mesh_id) b->mesh_id = sdf_create_id(h, "grid");
+    }
+}
+
+
+
 void sdf_set_namevalue(sdf_block_t *copy, const char *names, const void *values)
 {
     int ndims = copy->ndims;
