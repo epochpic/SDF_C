@@ -86,6 +86,29 @@ static char *safe_create_string(char *s1)
 
 
 
+char *sdf_create_stringlen(char *str, int len)
+{
+    char *out = calloc(len + 1, 1);
+    strncpy(out, str, len);
+    return out;
+}
+
+
+
+char *sdf_create_id(sdf_file_t *h, char *str)
+{
+    return sdf_create_stringlen(str, h->id_length);
+}
+
+
+
+char *sdf_create_string(sdf_file_t *h, char *str)
+{
+    return sdf_create_stringlen(str, h->string_length);
+}
+
+
+
 static int sdf_read_inline_block_locations(sdf_file_t *h)
 {
     sdf_block_t *b;
