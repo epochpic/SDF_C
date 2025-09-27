@@ -240,7 +240,8 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
         if (b->mult == 0) b->mult = 1;
         if (!b->units) b->units = sdf_create_id(h, "m");
         if (!b->mesh_id) b->mesh_id = sdf_create_id(h, "grid");
-    } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
+    } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH ||
+               b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH) {
         size_t n, len[4];
         int ndims = b->ndims;
         void **old;
@@ -280,10 +281,19 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
                 b->dim_mults[i] = 1.0;
         }
         if (!b->extents) {
-            b->nelements = 0;
-            for (i = 0; i < b->ndims; ++i) {
-                b->nelements += b->dims[i];
-                len[i] = b->dims[i];
+            if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
+                b->nelements = 0;
+                for (i = 0; i < b->ndims; ++i) {
+                    b->nelements += b->dims[i];
+                    len[i] = b->dims[i];
+                }
+            } else {
+                b->nelements = 1;
+                for (i = 0; i < b->ndims; ++i)
+                    b->nelements *= b->dims[i];
+                for (i = 0; i < b->ndims; ++i)
+                    len[i] = b->nelements;
+                b->nelements *= b->ngrids;
             }
 #define EXTENT(type) \
             type v, v0, v1, *grid; \

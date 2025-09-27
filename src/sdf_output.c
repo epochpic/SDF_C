@@ -219,6 +219,7 @@ static int write_block(sdf_file_t *h)
     case SDF_BLOCKTYPE_ARRAY:
     case SDF_BLOCKTYPE_PLAIN_MESH:
     case SDF_BLOCKTYPE_PLAIN_VARIABLE:
+    case SDF_BLOCKTYPE_LAGRANGIAN_MESH:
     case SDF_BLOCKTYPE_CPU_SPLIT:
         write_data(h);
         break;
@@ -237,7 +238,6 @@ static int write_block(sdf_file_t *h)
     SDF_BLOCKTYPE_POINT_DERIVED,
     SDF_BLOCKTYPE_STITCHED_OBSTACLE_GROUP,
     SDF_BLOCKTYPE_UNSTRUCTURED_MESH,
-    SDF_BLOCKTYPE_LAGRANGIAN_MESH,
     SDF_BLOCKTYPE_STATION,
     SDF_BLOCKTYPE_STATION_DERIVED,
 #endif
@@ -1134,6 +1134,7 @@ int sdf_write_meta(sdf_file_t *h)
 
 static int write_only_data(sdf_file_t *h)
 {
+    size_t len[9];
     int errcode = 0, i;
     sdf_block_t *b = h->current_block;
 
@@ -1146,9 +1147,16 @@ static int write_only_data(sdf_file_t *h)
         if (b->data) {
             errcode += sdf_write_bytes(h, b->data, b->data_length);
         } else if (b->grids) {
+            if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
+                for (i=0; i < b->ngrids; i++)
+                    len[i] = b->dims[i];
+            } else {
+                for (i=0; i < b->ngrids; i++)
+                    len[i] = b->nelements / b->ngrids;
+            }
             for (i=0; i < b->ngrids; i++)
                 errcode += sdf_write_bytes(h, b->grids[i],
-                        b->dims[i] * SDF_TYPE_SIZES[b->datatype]);
+                        len[i] * SDF_TYPE_SIZES[b->datatype]);
         }
     }
 
