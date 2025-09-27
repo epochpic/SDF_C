@@ -68,6 +68,22 @@
         } \
     } while(0)
 
+#define SDF_SET_ENTRY_STRINGLEN(value, strvalue, length) do { \
+        if (!(value)) value = malloc(h->string_length+1); \
+        strncpy((value), (strvalue), (length)); \
+        value[h->string_length-1] = '\0'; \
+    } while (0)
+
+#define SDF_SET_ENTRY_ID(value, strvalue) do { \
+        SDF_SET_ENTRY_STRINGLEN(value, strvalue, h->id_length); \
+        SDF_DPRNT(#value ": %s\n", (value)); \
+    } while (0)
+
+#define SDF_SET_ENTRY_STRING(value, strvalue) do { \
+        SDF_SET_ENTRY_STRINGLEN(value, strvalue, h->string_length); \
+        SDF_DPRNT(#value ": %s\n", (value)); \
+    } while (0)
+
 
 
 static char *safe_create_string(char *s1)
@@ -105,6 +121,19 @@ char *sdf_create_id(sdf_file_t *h, char *str)
 char *sdf_create_string(sdf_file_t *h, char *str)
 {
     return sdf_create_stringlen(str, h->string_length);
+}
+
+
+
+char **sdf_create_id_array(sdf_file_t *h, int ndim, char **str)
+{
+    int i;
+    char **out = calloc(ndim, sizeof(char*));
+
+    for (i = 0; i < ndim; ++i)
+        out[i] = sdf_create_stringlen(str[i], h->id_length);
+
+    return out;
 }
 
 
@@ -197,12 +226,93 @@ static void sdf_modify_rewrite_header(sdf_file_t *h)
 
 void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
 {
+    int i, ndims;
     sdf_block_t *b = block;
+#define NL 4
+    static const char units1[NL][2] = {"m", "m", "m", "s"};
+    static const char units2[NL][4] = {"m", "m", "rad", "s"};
+    static const char units3[NL][4] = {"m", "rad", "rad", "s"};
+    static const char labels1[NL][6] = {"X", "Y", "Z", "Time"};
+    static const char labels2[NL][6] = {"R", "Z", "Theta", "Time"};
+    static const char labels3[NL][6] = {"R", "Theta", "Phi", "Time"};
 
     if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE) {
         if (b->mult == 0) b->mult = 1;
         if (!b->units) b->units = sdf_create_id(h, "m");
         if (!b->mesh_id) b->mesh_id = sdf_create_id(h, "grid");
+    } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
+        size_t n, len[4];
+        int ndims = b->ndims;
+        void **old;
+
+        if (b->geometry == SDF_GEOMETRY_NULL)
+            b->geometry = SDF_GEOMETRY_CARTESIAN;
+
+        if (!b->dim_units) {
+            b->dim_units = calloc(ndims, sizeof(*b->dim_units));
+            if (b->geometry == SDF_GEOMETRY_CYLINDRICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_units[i], units2[i%NL]);
+            } else if (b->geometry == SDF_GEOMETRY_SPHERICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_units[i], units3[i%NL]);
+            } else {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_units[i], units1[i%NL]);
+            }
+        }
+        if (!b->dim_labels) {
+            b->dim_labels = calloc(ndims, sizeof(*b->dim_labels));
+            if (b->geometry == SDF_GEOMETRY_CYLINDRICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_labels[i], labels2[i%NL]);
+            } else if (b->geometry == SDF_GEOMETRY_SPHERICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_labels[i], labels3[i%NL]);
+            } else {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_labels[i], labels1[i%NL]);
+            }
+        }
+        if (!b->dim_mults) {
+            b->dim_mults = calloc(ndims, sizeof(*b->dim_mults));
+            for (i = 0; i < ndims; ++i)
+                b->dim_mults[i] = 1.0;
+        }
+        if (!b->extents) {
+            b->nelements = 0;
+            for (i = 0; i < b->ndims; ++i) {
+                b->nelements += b->dims[i];
+                len[i] = b->dims[i];
+            }
+#define EXTENT(type) \
+            type v, v0, v1, *grid; \
+            for (i = 0; i < ndims; ++i) { \
+                grid = b->grids[i]; \
+                v0 = v1 = grid[0]; \
+                for (n = 0; n < len[i]; ++n) { \
+                    v = grid[n]; \
+                    if (v0 > v) v0 = v; \
+                    if (v1 < v) v1 = v; \
+                } \
+                b->extents[i] = v0; \
+                b->extents[i+ndims] = v1; \
+            }
+            b->extents = calloc(2 * ndims, sizeof(*b->extents));
+            if (b->datatype == SDF_DATATYPE_INTEGER4) {
+                EXTENT(int32_t)
+            } else if (b->datatype == SDF_DATATYPE_INTEGER8) {
+                EXTENT(int64_t)
+            } else if (b->datatype == SDF_DATATYPE_REAL4) {
+                EXTENT(float)
+            } else if (b->datatype == SDF_DATATYPE_REAL8) {
+                EXTENT(double)
+            }
+        }
+        old = b->grids;
+        b->grids = calloc(ndims, sizeof(*b->grids));
+        for (i = 0; i < ndims; ++i)
+            b->grids[i] = old[i];
     }
 }
 

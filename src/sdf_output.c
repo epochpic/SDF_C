@@ -845,7 +845,6 @@ static int write_plain_mesh_meta(sdf_file_t *h)
 
     if (!b || !b->in_file) return 0;
 
-/*
     if (b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH) {
         b->nelements = b->ndims;
         for (i=0; i < b->ndims; i++)
@@ -856,7 +855,6 @@ static int write_plain_mesh_meta(sdf_file_t *h)
         for (i=0; i < b->ndims; i++)
             b->nelements += b->dims[i];
     }
-*/
 
     // Metadata is
     // - mults     REAL(r8), DIMENSION(ndims)
