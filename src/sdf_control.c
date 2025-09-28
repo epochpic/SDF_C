@@ -228,13 +228,9 @@ static int sdf_fopen(sdf_file_t *h, int mode)
 
 /** @ingroup control
  */
-sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
+sdf_file_t *sdf_new(comm_t comm, int use_mmap)
 {
     sdf_file_t *h;
-    int ret;
-
-    // Abort for invalid mode argument
-    assert(mode&SDF_READ || mode&SDF_WRITE);
 
     // Create filehandle
     h = malloc(sizeof(*h));
@@ -266,18 +262,8 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
     h->rank = 0;
     h->ncpus = 1;
 #endif
-    h->filename = malloc(strlen(filename)+1);
-    memcpy(h->filename, filename, strlen(filename)+1);
 
     h->hashed_blocks_by_id = h->hashed_blocks_by_name = NULL;
-
-    sdf_fopen(h, mode);
-    if (!h->filehandle) {
-        free(h->filename);
-        free(h);
-        h = NULL;
-        return h;
-    }
 
 #ifndef PARALLEL
     if (use_mmap)
@@ -287,6 +273,34 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
         h->mmap = NULL;
 
     h->array_count = 20;
+
+    return h;
+}
+
+
+
+/** @ingroup control
+ */
+sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
+{
+    sdf_file_t *h;
+    int ret;
+
+    // Abort for invalid mode argument
+    assert(mode&SDF_READ || mode&SDF_WRITE);
+
+    h = sdf_new(comm, use_mmap);
+
+    h->filename = malloc(strlen(filename)+1);
+    memcpy(h->filename, filename, strlen(filename)+1);
+
+    sdf_fopen(h, mode);
+    if (!h->filehandle) {
+        free(h->filename);
+        free(h);
+        h = NULL;
+        return h;
+    }
 
 #ifndef PARALLEL
     if (h->mmap) {
