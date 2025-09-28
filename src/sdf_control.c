@@ -48,7 +48,7 @@
 static uint32_t sdf_random(void);
 static void sdf_random_init(void);
 static int sdf_free_handle(sdf_file_t *h);
-static int sdf_fclose(sdf_file_t *h);
+int sdf_fclose(sdf_file_t *h);
 
 const char *sdf_blocktype_c[] = {
     "SDF_BLOCKTYPE_NULL",
@@ -190,7 +190,7 @@ int sdf_broadcast(sdf_file_t *h, void *buf, int size)
 
 
 
-static int sdf_fopen(sdf_file_t *h, int mode)
+int sdf_fopen(sdf_file_t *h, int mode)
 {
     int ret = 0;
 
@@ -528,7 +528,7 @@ static int sdf_free_handle(sdf_file_t *h)
 
 
 
-static int sdf_fclose(sdf_file_t *h)
+int sdf_fclose(sdf_file_t *h)
 {
     // No open file
     if (!h || !h->filehandle) return 1;

@@ -39,6 +39,8 @@ static int write_stitched_matvar(sdf_file_t *h);
 static int write_stitched_species(sdf_file_t *h);
 static int write_run_info_meta(sdf_file_t *h);
 static int write_data(sdf_file_t *h);
+int sdf_fopen(sdf_file_t *h, int mode);
+int sdf_fclose(sdf_file_t *h);
 
 static int32_t summary_offset_pos;
 
@@ -1236,12 +1238,23 @@ static int sdf_update_block_locations(sdf_file_t *h)
 
 
 
-int sdf_write(sdf_file_t *h)
+int sdf_write(sdf_file_t *h, char *filename)
 {
     int errcode;
     sdf_block_t *b;
 
     h->use_summary = h->done_header = h->metadata_modified = 0;
+
+    h->filename = malloc(strlen(filename)+1);
+    memcpy(h->filename, filename, strlen(filename)+1);
+
+    sdf_fopen(h, SDF_WRITE);
+    if (!h->filehandle) {
+        free(h->filename);
+        h->filename = NULL;
+        return -1;
+    }
+
     errcode = write_header(h);
     sdf_update_block_locations(h);
 
@@ -1269,7 +1282,8 @@ int sdf_write(sdf_file_t *h)
     sdf_write_bytes(h, &h->summary_size, SOI4);
     sdf_write_bytes(h, &h->nblocks_file, SOI4);
 
-    sdf_flush(h);
+    sdf_fclose(h);
+    h->done_header = 0;
 
     return errcode;
 }
