@@ -68,6 +68,74 @@
         } \
     } while(0)
 
+#define SDF_SET_ENTRY_STRINGLEN(value, strvalue, length) do { \
+        if (!(value)) value = malloc(h->string_length+1); \
+        strncpy((value), (strvalue), (length)); \
+        value[h->string_length-1] = '\0'; \
+    } while (0)
+
+#define SDF_SET_ENTRY_ID(value, strvalue) do { \
+        SDF_SET_ENTRY_STRINGLEN(value, strvalue, h->id_length); \
+        SDF_DPRNT(#value ": %s\n", (value)); \
+    } while (0)
+
+#define SDF_SET_ENTRY_STRING(value, strvalue) do { \
+        SDF_SET_ENTRY_STRINGLEN(value, strvalue, h->string_length); \
+        SDF_DPRNT(#value ": %s\n", (value)); \
+    } while (0)
+
+
+
+static char *safe_create_string(char *s1)
+{
+    int len1;
+    char *s2;
+
+    len1 = strlen(s1) + 1;
+
+    s2 = malloc(len1);
+    memcpy(s2, s1, len1);
+    s2[len1-1] = '\0';
+
+    return s2;
+}
+
+
+
+char *sdf_create_stringlen(char *str, int len)
+{
+    char *out = calloc(len + 1, 1);
+    strncpy(out, str, len);
+    return out;
+}
+
+
+
+char *sdf_create_id(sdf_file_t *h, char *str)
+{
+    return sdf_create_stringlen(str, h->id_length);
+}
+
+
+
+char *sdf_create_string(sdf_file_t *h, char *str)
+{
+    return sdf_create_stringlen(str, h->string_length);
+}
+
+
+
+char **sdf_create_id_array(sdf_file_t *h, int ndim, char **str)
+{
+    int i;
+    char **out = calloc(ndim, sizeof(char*));
+
+    for (i = 0; i < ndim; ++i)
+        out[i] = sdf_create_stringlen(str[i], h->id_length);
+
+    return out;
+}
+
 
 
 static int sdf_read_inline_block_locations(sdf_file_t *h)
@@ -154,6 +222,140 @@ static void sdf_modify_rewrite_header(sdf_file_t *h)
     sdf_write_at(h, offset, &h->nblocks_file, SOI4); offset += SOI4;
 }
 
+
+
+void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
+{
+    int i, ndims;
+    sdf_block_t *b = block;
+#define NL 4
+    static const char units1[NL][2] = {"m", "m", "m", "s"};
+    static const char units2[NL][4] = {"m", "m", "rad", "s"};
+    static const char units3[NL][4] = {"m", "rad", "rad", "s"};
+    static const char labels1[NL][6] = {"X", "Y", "Z", "Time"};
+    static const char labels2[NL][6] = {"R", "Z", "Theta", "Time"};
+    static const char labels3[NL][6] = {"R", "Theta", "Phi", "Time"};
+
+    if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE) {
+        if (b->mult == 0) b->mult = 1;
+        if (!b->units) b->units = sdf_create_id(h, "m");
+        if (!b->mesh_id) b->mesh_id = sdf_create_id(h, "grid");
+    } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH ||
+               b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH) {
+        size_t n, len[4];
+        int ndims = b->ndims;
+        void **old;
+
+        if (b->geometry == SDF_GEOMETRY_NULL)
+            b->geometry = SDF_GEOMETRY_CARTESIAN;
+
+        if (!b->dim_units) {
+            b->dim_units = calloc(ndims, sizeof(*b->dim_units));
+            if (b->geometry == SDF_GEOMETRY_CYLINDRICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_units[i], units2[i%NL]);
+            } else if (b->geometry == SDF_GEOMETRY_SPHERICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_units[i], units3[i%NL]);
+            } else {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_units[i], units1[i%NL]);
+            }
+        }
+        if (!b->dim_labels) {
+            b->dim_labels = calloc(ndims, sizeof(*b->dim_labels));
+            if (b->geometry == SDF_GEOMETRY_CYLINDRICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_labels[i], labels2[i%NL]);
+            } else if (b->geometry == SDF_GEOMETRY_SPHERICAL) {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_labels[i], labels3[i%NL]);
+            } else {
+                for (i = 0; i < ndims; ++i)
+                    SDF_SET_ENTRY_ID(block->dim_labels[i], labels1[i%NL]);
+            }
+        }
+        if (!b->dim_mults) {
+            b->dim_mults = calloc(ndims, sizeof(*b->dim_mults));
+            for (i = 0; i < ndims; ++i)
+                b->dim_mults[i] = 1.0;
+        }
+        if (!b->extents) {
+            if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
+                b->nelements = 0;
+                for (i = 0; i < b->ndims; ++i) {
+                    b->nelements += b->dims[i];
+                    len[i] = b->dims[i];
+                }
+            } else {
+                b->nelements = 1;
+                for (i = 0; i < b->ndims; ++i)
+                    b->nelements *= b->dims[i];
+                for (i = 0; i < b->ndims; ++i)
+                    len[i] = b->nelements;
+                b->nelements *= b->ngrids;
+            }
+#define EXTENT(type) \
+            type v, v0, v1, *grid; \
+            for (i = 0; i < ndims; ++i) { \
+                grid = b->grids[i]; \
+                v0 = v1 = grid[0]; \
+                for (n = 0; n < len[i]; ++n) { \
+                    v = grid[n]; \
+                    if (v0 > v) v0 = v; \
+                    if (v1 < v) v1 = v; \
+                } \
+                b->extents[i] = v0; \
+                b->extents[i+ndims] = v1; \
+            }
+            b->extents = calloc(2 * ndims, sizeof(*b->extents));
+            if (b->datatype == SDF_DATATYPE_INTEGER4) {
+                EXTENT(int32_t)
+            } else if (b->datatype == SDF_DATATYPE_INTEGER8) {
+                EXTENT(int64_t)
+            } else if (b->datatype == SDF_DATATYPE_REAL4) {
+                EXTENT(float)
+            } else if (b->datatype == SDF_DATATYPE_REAL8) {
+                EXTENT(double)
+            }
+        }
+        old = b->grids;
+        b->grids = calloc(ndims, sizeof(*b->grids));
+        for (i = 0; i < ndims; ++i)
+            b->grids[i] = old[i];
+    }
+}
+
+
+
+void sdf_set_namevalue(sdf_block_t *copy, const char *names, const void *values)
+{
+    int ndims = copy->ndims;
+    int i;
+    const char **cnames = (const char **)names;
+
+    copy->material_names = malloc(ndims * sizeof(char*));
+    for (i = 0; i < ndims; ++i) {
+        uint64_t len = strlen(cnames[i]) + 1;
+        copy->material_names[i] = malloc(len * sizeof(char));
+        memcpy(copy->material_names[i], cnames[i], len);
+    }
+
+    if (copy->datatype == SDF_DATATYPE_CHARACTER) {
+        const size_t sz = ndims * SDF_TYPE_SIZES[copy->datatype];
+        const char **vals = (const char **)values;
+        const char **ovals = copy->data = malloc(sz);
+        for (i=0; i<ndims; ++i) {
+            ovals[i] = safe_create_string(vals[i]);
+        }
+    } else if (copy->datatype == SDF_DATATYPE_LOGICAL ||
+               copy->datatype == SDF_DATATYPE_INTEGER8 ||
+               copy->datatype == SDF_DATATYPE_REAL8) {
+        const size_t sz = ndims * SDF_TYPE_SIZES[copy->datatype];
+        copy->data = malloc(sz);
+        memcpy(copy->data, values, sz);
+    }
+}
 
 
 static int copy_block(sdf_block_t *copy, const sdf_block_t *original)

@@ -48,7 +48,7 @@
 static uint32_t sdf_random(void);
 static void sdf_random_init(void);
 static int sdf_free_handle(sdf_file_t *h);
-static int sdf_fclose(sdf_file_t *h);
+int sdf_fclose(sdf_file_t *h);
 
 const char *sdf_blocktype_c[] = {
     "SDF_BLOCKTYPE_NULL",
@@ -190,7 +190,7 @@ int sdf_broadcast(sdf_file_t *h, void *buf, int size)
 
 
 
-static int sdf_fopen(sdf_file_t *h, int mode)
+int sdf_fopen(sdf_file_t *h, int mode)
 {
     int ret = 0;
 
@@ -228,13 +228,9 @@ static int sdf_fopen(sdf_file_t *h, int mode)
 
 /** @ingroup control
  */
-sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
+sdf_file_t *sdf_new(comm_t comm, int use_mmap)
 {
     sdf_file_t *h;
-    int ret;
-
-    // Abort for invalid mode argument
-    assert(mode&SDF_READ || mode&SDF_WRITE);
 
     // Create filehandle
     h = malloc(sizeof(*h));
@@ -244,7 +240,7 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
     h->dbg_count = DBG_CHUNK;
     h->dbg = h->dbg_buf = malloc(h->dbg_count);
 #endif
-    h->string_length = 64;
+    h->string_length = 128;
     h->indent = 0;
 
     h->done_header = 0;
@@ -266,18 +262,8 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
     h->rank = 0;
     h->ncpus = 1;
 #endif
-    h->filename = malloc(strlen(filename)+1);
-    memcpy(h->filename, filename, strlen(filename)+1);
 
     h->hashed_blocks_by_id = h->hashed_blocks_by_name = NULL;
-
-    sdf_fopen(h, mode);
-    if (!h->filehandle) {
-        free(h->filename);
-        free(h);
-        h = NULL;
-        return h;
-    }
 
 #ifndef PARALLEL
     if (use_mmap)
@@ -287,6 +273,34 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
         h->mmap = NULL;
 
     h->array_count = 20;
+
+    return h;
+}
+
+
+
+/** @ingroup control
+ */
+sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap)
+{
+    sdf_file_t *h;
+    int ret;
+
+    // Abort for invalid mode argument
+    assert(mode&SDF_READ || mode&SDF_WRITE);
+
+    h = sdf_new(comm, use_mmap);
+
+    h->filename = malloc(strlen(filename)+1);
+    memcpy(h->filename, filename, strlen(filename)+1);
+
+    sdf_fopen(h, mode);
+    if (!h->filehandle) {
+        free(h->filename);
+        free(h);
+        h = NULL;
+        return h;
+    }
 
 #ifndef PARALLEL
     if (h->mmap) {
@@ -514,7 +528,7 @@ static int sdf_free_handle(sdf_file_t *h)
 
 
 
-static int sdf_fclose(sdf_file_t *h)
+int sdf_fclose(sdf_file_t *h)
 {
     // No open file
     if (!h || !h->filehandle) return 1;

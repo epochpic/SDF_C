@@ -76,7 +76,7 @@ void sdf_trim(char *str)
 
 
 
-static inline int sdf_get_next_block(sdf_file_t *h)
+inline int sdf_get_next_block(sdf_file_t *h)
 {
     if (h->blocklist) {
         if (!h->current_block)

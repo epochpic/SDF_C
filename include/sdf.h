@@ -803,6 +803,9 @@ char *sdf_extension_get_info_string(sdf_file_t *h, char const *prefix);
  */
 void sdf_extension_print_version(sdf_file_t *h);
 
+
+int sdf_write(sdf_file_t *h, char *filename);
+
 #ifdef __cplusplus
 }
 #endif
