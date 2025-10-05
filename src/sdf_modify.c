@@ -236,10 +236,18 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
     static const char labels2[NL][6] = {"R", "Z", "Theta", "Time"};
     static const char labels3[NL][6] = {"R", "Theta", "Phi", "Time"};
 
-    if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE) {
+    if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE ||
+        b->blocktype == SDF_BLOCKTYPE_POINT_VARIABLE) {
+        b->nelements = 1;
+        for (i = 0; i < b->ndims; ++i)
+            b->nelements *= b->dims[i];
         if (b->mult == 0) b->mult = 1;
-        if (!b->units) b->units = sdf_create_id(h, "m");
-        if (!b->mesh_id) b->mesh_id = sdf_create_id(h, "grid");
+        if (!b->units) b->units = sdf_create_id(h, "");
+        if (!b->mesh_id) {
+            b->mesh_id = sdf_create_id(h, "grid");
+            if (b->blocktype == SDF_BLOCKTYPE_POINT_VARIABLE)
+                snprintf(b->mesh_id, h->id_length, "grid/%s", b->material_id);
+        }
     } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH ||
                b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH) {
         size_t n, len[4];

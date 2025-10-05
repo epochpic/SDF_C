@@ -223,6 +223,7 @@ static int write_block(sdf_file_t *h)
     case SDF_BLOCKTYPE_DATABLOCK:
     case SDF_BLOCKTYPE_PLAIN_MESH:
     case SDF_BLOCKTYPE_PLAIN_VARIABLE:
+    case SDF_BLOCKTYPE_POINT_VARIABLE:
     case SDF_BLOCKTYPE_LAGRANGIAN_MESH:
     case SDF_BLOCKTYPE_CPU_SPLIT:
         write_data(h);
@@ -235,7 +236,6 @@ static int write_block(sdf_file_t *h)
     }
 #if 0
     SDF_BLOCKTYPE_POINT_MESH,
-    SDF_BLOCKTYPE_POINT_VARIABLE,
     SDF_BLOCKTYPE_SOURCE,
     SDF_BLOCKTYPE_SPECIES,
     SDF_BLOCKTYPE_STITCHED_OBSTACLE_GROUP,
