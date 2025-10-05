@@ -222,6 +222,7 @@ static int write_block(sdf_file_t *h)
     case SDF_BLOCKTYPE_ARRAY:
     case SDF_BLOCKTYPE_DATABLOCK:
     case SDF_BLOCKTYPE_PLAIN_MESH:
+    case SDF_BLOCKTYPE_POINT_MESH:
     case SDF_BLOCKTYPE_PLAIN_VARIABLE:
     case SDF_BLOCKTYPE_POINT_VARIABLE:
     case SDF_BLOCKTYPE_LAGRANGIAN_MESH:
@@ -235,7 +236,6 @@ static int write_block(sdf_file_t *h)
         printf("WARNING! Ignored id: %s\n", b->id);
     }
 #if 0
-    SDF_BLOCKTYPE_POINT_MESH,
     SDF_BLOCKTYPE_SOURCE,
     SDF_BLOCKTYPE_SPECIES,
     SDF_BLOCKTYPE_STITCHED_OBSTACLE_GROUP,
@@ -981,7 +981,7 @@ static int write_point_mesh_meta(sdf_file_t *h)
 
     b->info_length = h->block_header_length + SOI4 + SOI8
             + (3 * b->ndims) * SOF8 + (2 * b->ndims + 1) * h->id_length;
-    b->data_length = b->nelements * SDF_TYPE_SIZES[b->datatype];
+    b->data_length = b->ndims * b->nelements * SDF_TYPE_SIZES[b->datatype];
 
     // Write header
     errcode = write_block_header(h);
@@ -1156,6 +1156,9 @@ static int write_only_data(sdf_file_t *h)
             if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
                 for (i=0; i < b->ngrids; i++)
                     len[i] = b->dims[i];
+            } else if (b->blocktype == SDF_BLOCKTYPE_POINT_MESH) {
+                for (i=0; i < b->ngrids; i++)
+                    len[i] = b->dims[0];
             } else {
                 for (i=0; i < b->ndims; i++)
                     len[i] = b->nelements / b->ndims;

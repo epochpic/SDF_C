@@ -249,7 +249,8 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
                 snprintf(b->mesh_id, h->id_length, "grid/%s", b->material_id);
         }
     } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH ||
-               b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH) {
+               b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH ||
+               b->blocktype == SDF_BLOCKTYPE_POINT_MESH) {
         size_t n, len[4];
         int ndims = b->ndims;
         void **old;
@@ -295,6 +296,10 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
                     b->nelements += b->dims[i];
                     len[i] = b->dims[i];
                 }
+            } else if (b->blocktype == SDF_BLOCKTYPE_POINT_MESH) {
+                b->nelements = b->dims[0];
+                for (i = 0; i < b->ndims; ++i)
+                    len[i] = b->nelements;
             } else {
                 b->nelements = 1;
                 for (i = 0; i < b->ndims; ++i)
