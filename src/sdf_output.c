@@ -191,6 +191,9 @@ static int write_block(sdf_file_t *h)
     b = h->current_block;
     b->block_start = h->current_location;
 
+    if (!b->in_file)
+        return 0;
+
     switch (b->blocktype) {
     case SDF_BLOCKTYPE_CONSTANT:
         write_constant(h);
@@ -1271,6 +1274,10 @@ static int sdf_update_block_locations(sdf_file_t *h)
     h->start_location = h->current_location = h->first_block_location;
     while (b) {
         h->current_block = b;
+        if (!b->in_file) {
+            b = b->next;
+            continue;
+        }
         b->block_start = b->inline_block_start = h->current_location;
         errcode += write_meta(h);
         b->data_location = h->current_location;
@@ -1284,6 +1291,10 @@ static int sdf_update_block_locations(sdf_file_t *h)
     b = h->blocklist;
     while (b) {
         h->current_block = b;
+        if (!b->in_file) {
+            b = b->next;
+            continue;
+        }
         b->done_header = b->done_info = b->done_data = 0;
         b->done_header = 0;
         b->summary_block_start = h->current_location;

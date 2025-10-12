@@ -2799,6 +2799,8 @@ int sdf_add_derived_blocks_final(sdf_file_t *h)
                         append->n_ids = 0;
                         append->must_read = NULL;
                         append->variable_ids = NULL;
+                        append->in_file = 0;
+                        append->derived = 1;
 
                         str = (char*)malloc(len1 + len2 + 2);
                         memcpy(str, b->mesh_id, len1+len2+2);
