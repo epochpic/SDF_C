@@ -151,8 +151,8 @@ static int sdf_safe_write_string_len(sdf_file_t *h, char *string, int length)
     char *output;
     int len_s, errcode = 0;
 
-    output = malloc(length);
-    len_s = trimwhitespace(string, output, length);
+    output = malloc(length + 1);
+    len_s = trimwhitespace(string, output, length + 1);
 
     if (len_s > length && h->rank == h->rank_master) {
         printf("*** WARNING ***\n");
