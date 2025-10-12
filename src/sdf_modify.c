@@ -86,7 +86,7 @@
 
 
 
-static char *safe_create_string(char *s1)
+static char *safe_create_string(const char *s1)
 {
     int len1;
     char *s2;
