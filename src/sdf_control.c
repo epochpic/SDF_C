@@ -429,6 +429,8 @@ int sdf_free_block(sdf_file_t *h, sdf_block_t *b)
     sdf_delete_hash_block(h, b);
 
     FREE_ITEM(b->id);
+    FREE_ITEM(b->id_orig);
+    FREE_ITEM(b->name_orig);
     FREE_ITEM(b->units);
     FREE_ITEM(b->mesh_id);
     FREE_ITEM(b->material_id);

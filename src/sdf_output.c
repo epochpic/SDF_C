@@ -361,7 +361,10 @@ static int write_block_header(sdf_file_t *h)
 
         errcode += sdf_write_bytes(h, &b->data_location, SOI8);
 
-        errcode += sdf_safe_write_id(h, b->id);
+        if (b->id_orig)
+            errcode += sdf_safe_write_id(h, b->id_orig);
+        else
+            errcode += sdf_safe_write_id(h, b->id);
 
         errcode += sdf_write_bytes(h, &b->data_length, SOI8);
 
@@ -371,7 +374,10 @@ static int write_block_header(sdf_file_t *h)
 
         errcode += sdf_write_bytes(h, &b->ndims, SOI4);
 
-        errcode += sdf_safe_write_string(h, b->name);
+        if (b->name_orig)
+            errcode += sdf_safe_write_string(h, b->name_orig);
+        else
+            errcode += sdf_safe_write_string(h, b->name);
 
         block_info_length = b->info_length - h->block_header_length;
         errcode += sdf_write_bytes(h, &block_info_length, SOI4);

@@ -328,6 +328,7 @@ struct sdf_block {
     char *mimetype, *checksum_type, *checksum, *mmap;
     int64_t mmap_len;
     char derived;
+    char *id_orig, *name_orig;
 
     UT_hash_handle hh1, hh2;
 
