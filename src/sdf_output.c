@@ -843,6 +843,46 @@ static int write_run_info_meta(sdf_file_t *h)
 
 
 
+static int write_datablock_meta(sdf_file_t *h)
+{
+    int errcode;
+    sdf_block_t *b = h->current_block;
+    struct run_info *run = b->data;
+
+    if (!b || !b->in_file) return 0;
+
+    b->datatype = SDF_DATATYPE_CHARACTER;
+    b->ndims = 0;
+
+    // Metadata is
+    // - mimetype       CHARACTER(id_length)
+    // - checksum_type  CHARACTER(id_length)
+    // - checksum       CHARACTER(string_length)
+
+    b->info_length = h->block_header_length + 2 * h->id_length
+            + h->string_length;
+    b->data_length = b->nelements;
+
+    // Write header
+    errcode = write_block_header(h);
+
+    // Write metadata
+    if (h->rank == h->rank_master) {
+        errcode += sdf_safe_write_id(h, b->mimetype);
+
+        errcode += sdf_safe_write_id(h, b->checksum_type);
+
+        errcode += sdf_safe_write_string(h, b->checksum);
+    }
+
+    h->current_location = b->block_start + b->info_length;
+    b->done_info = 1;
+
+    return errcode;
+}
+
+
+
 static int write_plain_mesh_meta(sdf_file_t *h)
 {
     int errcode, i;
@@ -1084,6 +1124,9 @@ static int write_meta(sdf_file_t *h)
         break;
     case SDF_BLOCKTYPE_ARRAY:
         return_value = write_array_meta(h);
+        break;
+    case SDF_BLOCKTYPE_DATABLOCK:
+        return_value = write_datablock_meta(h);
         break;
     case SDF_BLOCKTYPE_CPU_SPLIT:
         return_value = write_cpu_split_meta(h);
