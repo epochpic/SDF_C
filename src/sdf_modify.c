@@ -342,7 +342,7 @@ void sdf_set_namevalue(sdf_block_t *copy, const char *names, const void *values)
     }
 
     if (copy->datatype == SDF_DATATYPE_CHARACTER) {
-        const size_t sz = ndims * SDF_TYPE_SIZES[copy->datatype];
+        const size_t sz = ndims * sizeof(char*);
         const char **vals = (const char **)values;
         const char **ovals = copy->data = malloc(sz);
         for (i=0; i<ndims; ++i) {
