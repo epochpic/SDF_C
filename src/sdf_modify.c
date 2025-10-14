@@ -138,6 +138,19 @@ char **sdf_create_id_array(sdf_file_t *h, int ndim, char **str)
 
 
 
+char **sdf_create_string_array(sdf_file_t *h, int ndim, char **str)
+{
+    int i;
+    char **out = calloc(ndim, sizeof(char*));
+
+    for (i = 0; i < ndim; ++i)
+        out[i] = sdf_create_stringlen(str[i], h->string_length);
+
+    return out;
+}
+
+
+
 static int sdf_read_inline_block_locations(sdf_file_t *h)
 {
     sdf_block_t *b;
