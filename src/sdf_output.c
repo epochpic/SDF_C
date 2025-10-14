@@ -602,8 +602,8 @@ static int write_stitched_material(sdf_file_t *h)
     // - material_names ndims*CHARACTER(string_length)
     // - varids    ndims*CHARACTER(id_length)
 
-    //b->info_length = h->block_header_length + SOI4
-    //        + (b->ndims + 1) * h->id_length + b->ndims * h->string_length;
+    b->info_length = h->block_header_length + SOI4
+            + (b->ndims + 1) * h->id_length + b->ndims * h->string_length;
     if (b->blocktype == SDF_BLOCKTYPE_STITCHED_MATERIAL) b->data_length = 0;
 
     // Write header
