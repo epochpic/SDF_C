@@ -2478,6 +2478,8 @@ int sdf_add_derived_blocks(sdf_file_t *h)
             append->id = str;
             len1 = strlen(str);
             str = malloc(len1+7);
+            b->id_orig = malloc(len1+1);
+            memcpy(b->id_orig, append->id, len1+1);
             memcpy(str, append->id, len1);
             memcpy(str+len1, "_orig", 6);
             sdf_unique_id(h, str);
@@ -2487,6 +2489,8 @@ int sdf_add_derived_blocks(sdf_file_t *h)
             append->name = str;
             len1 = strlen(str);
             str = malloc(len1+7);
+            b->name_orig = malloc(len1+1);
+            memcpy(b->name_orig, append->name, len1+1);
             memcpy(str, append->name, len1);
             memcpy(str+len1, "_orig", 6);
             b->name = str;
@@ -2795,6 +2799,8 @@ int sdf_add_derived_blocks_final(sdf_file_t *h)
                         append->n_ids = 0;
                         append->must_read = NULL;
                         append->variable_ids = NULL;
+                        append->in_file = 0;
+                        append->derived = 1;
 
                         str = (char*)malloc(len1 + len2 + 2);
                         memcpy(str, b->mesh_id, len1+len2+2);

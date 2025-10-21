@@ -151,8 +151,8 @@ static int sdf_safe_write_string_len(sdf_file_t *h, char *string, int length)
     char *output;
     int len_s, errcode = 0;
 
-    output = malloc(length);
-    len_s = trimwhitespace(string, output, length);
+    output = malloc(length + 1);
+    len_s = trimwhitespace(string, output, length + 1);
 
     if (len_s > length && h->rank == h->rank_master) {
         printf("*** WARNING ***\n");
@@ -191,6 +191,9 @@ static int write_block(sdf_file_t *h)
     b = h->current_block;
     b->block_start = h->current_location;
 
+    if (!b->in_file)
+        return 0;
+
     switch (b->blocktype) {
     case SDF_BLOCKTYPE_CONSTANT:
         write_constant(h);
@@ -217,8 +220,11 @@ static int write_block(sdf_file_t *h)
         write_run_info_meta(h);
         break;
     case SDF_BLOCKTYPE_ARRAY:
+    case SDF_BLOCKTYPE_DATABLOCK:
     case SDF_BLOCKTYPE_PLAIN_MESH:
+    case SDF_BLOCKTYPE_POINT_MESH:
     case SDF_BLOCKTYPE_PLAIN_VARIABLE:
+    case SDF_BLOCKTYPE_POINT_VARIABLE:
     case SDF_BLOCKTYPE_LAGRANGIAN_MESH:
     case SDF_BLOCKTYPE_CPU_SPLIT:
         write_data(h);
@@ -230,16 +236,11 @@ static int write_block(sdf_file_t *h)
         printf("WARNING! Ignored id: %s\n", b->id);
     }
 #if 0
-    SDF_BLOCKTYPE_POINT_MESH,
-    SDF_BLOCKTYPE_POINT_VARIABLE,
     SDF_BLOCKTYPE_SOURCE,
     SDF_BLOCKTYPE_SPECIES,
-    SDF_BLOCKTYPE_PLAIN_DERIVED,
-    SDF_BLOCKTYPE_POINT_DERIVED,
     SDF_BLOCKTYPE_STITCHED_OBSTACLE_GROUP,
     SDF_BLOCKTYPE_UNSTRUCTURED_MESH,
     SDF_BLOCKTYPE_STATION,
-    SDF_BLOCKTYPE_STATION_DERIVED,
 #endif
     return 0;
 }
@@ -363,7 +364,10 @@ static int write_block_header(sdf_file_t *h)
 
         errcode += sdf_write_bytes(h, &b->data_location, SOI8);
 
-        errcode += sdf_safe_write_id(h, b->id);
+        if (b->id_orig)
+            errcode += sdf_safe_write_id(h, b->id_orig);
+        else
+            errcode += sdf_safe_write_id(h, b->id);
 
         errcode += sdf_write_bytes(h, &b->data_length, SOI8);
 
@@ -373,7 +377,10 @@ static int write_block_header(sdf_file_t *h)
 
         errcode += sdf_write_bytes(h, &b->ndims, SOI4);
 
-        errcode += sdf_safe_write_string(h, b->name);
+        if (b->name_orig)
+            errcode += sdf_safe_write_string(h, b->name_orig);
+        else
+            errcode += sdf_safe_write_string(h, b->name);
 
         block_info_length = b->info_length - h->block_header_length;
         errcode += sdf_write_bytes(h, &block_info_length, SOI4);
@@ -423,7 +430,6 @@ static int write_constant(sdf_file_t *h)
 static int write_namevalue(sdf_file_t *h)
 {
     int errcode, i, sz;
-    int32_t int4;
     sdf_block_t *b = h->current_block;
 
     if (!b || !b->in_file) return 0;
@@ -596,8 +602,8 @@ static int write_stitched_material(sdf_file_t *h)
     // - material_names ndims*CHARACTER(string_length)
     // - varids    ndims*CHARACTER(id_length)
 
-    //b->info_length = h->block_header_length + SOI4
-    //        + (b->ndims + 1) * h->id_length + b->ndims * h->string_length;
+    b->info_length = h->block_header_length + SOI4
+            + (b->ndims + 1) * h->id_length + b->ndims * h->string_length;
     if (b->blocktype == SDF_BLOCKTYPE_STITCHED_MATERIAL) b->data_length = 0;
 
     // Write header
@@ -837,6 +843,46 @@ static int write_run_info_meta(sdf_file_t *h)
 
 
 
+static int write_datablock_meta(sdf_file_t *h)
+{
+    int errcode;
+    sdf_block_t *b = h->current_block;
+    struct run_info *run = b->data;
+
+    if (!b || !b->in_file) return 0;
+
+    b->datatype = SDF_DATATYPE_CHARACTER;
+    b->ndims = 0;
+
+    // Metadata is
+    // - mimetype       CHARACTER(id_length)
+    // - checksum_type  CHARACTER(id_length)
+    // - checksum       CHARACTER(string_length)
+
+    b->info_length = h->block_header_length + 2 * h->id_length
+            + h->string_length;
+    b->data_length = b->nelements;
+
+    // Write header
+    errcode = write_block_header(h);
+
+    // Write metadata
+    if (h->rank == h->rank_master) {
+        errcode += sdf_safe_write_id(h, b->mimetype);
+
+        errcode += sdf_safe_write_id(h, b->checksum_type);
+
+        errcode += sdf_safe_write_string(h, b->checksum);
+    }
+
+    h->current_location = b->block_start + b->info_length;
+    b->done_info = 1;
+
+    return errcode;
+}
+
+
+
 static int write_plain_mesh_meta(sdf_file_t *h)
 {
     int errcode, i;
@@ -975,7 +1021,7 @@ static int write_point_mesh_meta(sdf_file_t *h)
 
     b->info_length = h->block_header_length + SOI4 + SOI8
             + (3 * b->ndims) * SOF8 + (2 * b->ndims + 1) * h->id_length;
-    b->data_length = b->nelements * SDF_TYPE_SIZES[b->datatype];
+    b->data_length = b->ndims * b->nelements * SDF_TYPE_SIZES[b->datatype];
 
     // Write header
     errcode = write_block_header(h);
@@ -1079,6 +1125,9 @@ static int write_meta(sdf_file_t *h)
     case SDF_BLOCKTYPE_ARRAY:
         return_value = write_array_meta(h);
         break;
+    case SDF_BLOCKTYPE_DATABLOCK:
+        return_value = write_datablock_meta(h);
+        break;
     case SDF_BLOCKTYPE_CPU_SPLIT:
         return_value = write_cpu_split_meta(h);
         break;
@@ -1150,11 +1199,14 @@ static int write_only_data(sdf_file_t *h)
             if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH) {
                 for (i=0; i < b->ngrids; i++)
                     len[i] = b->dims[i];
-            } else {
+            } else if (b->blocktype == SDF_BLOCKTYPE_POINT_MESH) {
                 for (i=0; i < b->ngrids; i++)
-                    len[i] = b->nelements / b->ngrids;
+                    len[i] = b->dims[0];
+            } else {
+                for (i=0; i < b->ndims; i++)
+                    len[i] = b->nelements / b->ndims;
             }
-            for (i=0; i < b->ngrids; i++)
+            for (i=0; i < b->ndims; i++)
                 errcode += sdf_write_bytes(h, b->grids[i],
                         len[i] * SDF_TYPE_SIZES[b->datatype]);
         }
@@ -1257,7 +1309,7 @@ static int sdf_write_header(sdf_file_t *h, char *code_name, int code_io_version,
 static int sdf_update_block_locations(sdf_file_t *h)
 {
     sdf_block_t *b;
-    int errcode;
+    int errcode = 0;
     int old_master = h->rank_master;
     int old_summary = h->use_summary;
 
@@ -1268,6 +1320,10 @@ static int sdf_update_block_locations(sdf_file_t *h)
     h->start_location = h->current_location = h->first_block_location;
     while (b) {
         h->current_block = b;
+        if (!b->in_file) {
+            b = b->next;
+            continue;
+        }
         b->block_start = b->inline_block_start = h->current_location;
         errcode += write_meta(h);
         b->data_location = h->current_location;
@@ -1281,6 +1337,10 @@ static int sdf_update_block_locations(sdf_file_t *h)
     b = h->blocklist;
     while (b) {
         h->current_block = b;
+        if (!b->in_file) {
+            b = b->next;
+            continue;
+        }
         b->done_header = b->done_info = b->done_data = 0;
         b->done_header = 0;
         b->summary_block_start = h->current_location;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(SDFC VERSION 14.4.10 LANGUAGES C)
+project(SDFC VERSION 14.4.12 LANGUAGES C)
 if(PARALLEL)
    find_package(MPI REQUIRED)
    include_directories(${MPI_C_INCLUDE_PATH})

@@ -86,7 +86,7 @@
 
 
 
-static char *safe_create_string(char *s1)
+static char *safe_create_string(const char *s1)
 {
     int len1;
     char *s2;
@@ -132,6 +132,19 @@ char **sdf_create_id_array(sdf_file_t *h, int ndim, char **str)
 
     for (i = 0; i < ndim; ++i)
         out[i] = sdf_create_stringlen(str[i], h->id_length);
+
+    return out;
+}
+
+
+
+char **sdf_create_string_array(sdf_file_t *h, int ndim, char **str)
+{
+    int i;
+    char **out = calloc(ndim, sizeof(char*));
+
+    for (i = 0; i < ndim; ++i)
+        out[i] = sdf_create_stringlen(str[i], h->string_length);
 
     return out;
 }
@@ -236,12 +249,21 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
     static const char labels2[NL][6] = {"R", "Z", "Theta", "Time"};
     static const char labels3[NL][6] = {"R", "Theta", "Phi", "Time"};
 
-    if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE) {
+    if (b->blocktype == SDF_BLOCKTYPE_PLAIN_VARIABLE ||
+        b->blocktype == SDF_BLOCKTYPE_POINT_VARIABLE) {
+        b->nelements = 1;
+        for (i = 0; i < b->ndims; ++i)
+            b->nelements *= b->dims[i];
         if (b->mult == 0) b->mult = 1;
-        if (!b->units) b->units = sdf_create_id(h, "m");
-        if (!b->mesh_id) b->mesh_id = sdf_create_id(h, "grid");
+        if (!b->units) b->units = sdf_create_id(h, "");
+        if (!b->mesh_id) {
+            b->mesh_id = sdf_create_id(h, "grid");
+            if (b->blocktype == SDF_BLOCKTYPE_POINT_VARIABLE)
+                snprintf(b->mesh_id, h->id_length, "grid/%s", b->material_id);
+        }
     } else if (b->blocktype == SDF_BLOCKTYPE_PLAIN_MESH ||
-               b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH) {
+               b->blocktype == SDF_BLOCKTYPE_LAGRANGIAN_MESH ||
+               b->blocktype == SDF_BLOCKTYPE_POINT_MESH) {
         size_t n, len[4];
         int ndims = b->ndims;
         void **old;
@@ -287,6 +309,10 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
                     b->nelements += b->dims[i];
                     len[i] = b->dims[i];
                 }
+            } else if (b->blocktype == SDF_BLOCKTYPE_POINT_MESH) {
+                b->nelements = b->dims[0];
+                for (i = 0; i < b->ndims; ++i)
+                    len[i] = b->nelements;
             } else {
                 b->nelements = 1;
                 for (i = 0; i < b->ndims; ++i)
@@ -342,7 +368,7 @@ void sdf_set_namevalue(sdf_block_t *copy, const char *names, const void *values)
     }
 
     if (copy->datatype == SDF_DATATYPE_CHARACTER) {
-        const size_t sz = ndims * SDF_TYPE_SIZES[copy->datatype];
+        const size_t sz = ndims * sizeof(char*);
         const char **vals = (const char **)values;
         const char **ovals = copy->data = malloc(sz);
         for (i=0; i<ndims; ++i) {
