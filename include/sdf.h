@@ -394,7 +394,7 @@ struct run_info {
  @param[in] filename Name of the SDF file to open
  @param[in] comm     MPI communicator to use
  @param[in] mode     File mode
- @param[in] use_mmap Flag which specifies wether mmap should be used
+ @param[in] use_mmap Flag which specifies whether mmap should be used
 
  @return SDF filehandle on success, NULL on error
 
@@ -408,6 +408,18 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap);
 
 
 /**
+ @brief Create a new SDF file filehandle
+
+ @param[in] comm     MPI communicator to use
+ @param[in] use_mmap Flag which specifies whether mmap should be used
+
+ @return SDF filehandle on success, NULL on error
+ */
+_EXPORT
+sdf_file_t *sdf_new(comm_t comm, int use_mmap);
+
+
+/**
  @brief Close an SDF file and free the filehandle
 
  This routine closes the SDF file associated with this file handle
@@ -417,6 +429,7 @@ sdf_file_t *sdf_open(const char *filename, comm_t comm, int mode, int use_mmap);
 
  @return 0 on success, 1 on error
  */
+_EXPORT
 int sdf_close(sdf_file_t *h);
 
 
@@ -805,6 +818,7 @@ char *sdf_extension_get_info_string(sdf_file_t *h, char const *prefix);
 void sdf_extension_print_version(sdf_file_t *h);
 
 
+_EXPORT
 int sdf_write(sdf_file_t *h, char *filename);
 
 #ifdef __cplusplus

@@ -358,6 +358,7 @@ int sdf_close(sdf_file_t *h)
 
 
 
+_EXPORT
 int sdf_free_block_data(sdf_file_t *h, sdf_block_t *b)
 {
     int i;
