@@ -111,6 +111,7 @@ char *sdf_create_stringlen(char *str, int len)
 
 
 
+_EXPORT
 char *sdf_create_id(sdf_file_t *h, char *str)
 {
     return sdf_create_stringlen(str, h->id_length);
@@ -118,6 +119,7 @@ char *sdf_create_id(sdf_file_t *h, char *str)
 
 
 
+_EXPORT
 char *sdf_create_string(sdf_file_t *h, char *str)
 {
     return sdf_create_stringlen(str, h->string_length);
@@ -125,6 +127,7 @@ char *sdf_create_string(sdf_file_t *h, char *str)
 
 
 
+_EXPORT
 char **sdf_create_id_array(sdf_file_t *h, int ndim, char **str)
 {
     int i;
@@ -138,6 +141,7 @@ char **sdf_create_id_array(sdf_file_t *h, int ndim, char **str)
 
 
 
+_EXPORT
 char **sdf_create_string_array(sdf_file_t *h, int ndim, char **str)
 {
     int i;
@@ -237,6 +241,7 @@ static void sdf_modify_rewrite_header(sdf_file_t *h)
 
 
 
+_EXPORT
 void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
 {
     int i, ndims;
@@ -354,6 +359,7 @@ void sdf_set_defaults(sdf_file_t *h, sdf_block_t *block)
 
 
 
+_EXPORT
 void sdf_set_namevalue(sdf_block_t *copy, const char *names, const void *values)
 {
     int ndims = copy->ndims;
