@@ -32,6 +32,7 @@
 #define SDF_REVISION 4
 #define SDF_LIB_VERSION  14
 #define SDF_LIB_REVISION 4
+#define SDF_LIB_FULLVERSION "14.4.14"
 
 #define SDF_MAGIC "SDF1"
 
