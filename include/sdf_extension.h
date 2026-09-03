@@ -22,6 +22,7 @@ struct sdf_extension_struct {
     int (*read_blocklist)(sdf_extension_t *, sdf_file_t *h);
     int (*timestate_update)(sdf_extension_t *, sdf_file_t *h);
     void (*get_version)(sdf_extension_t *, int *major, int *minor);
+    void (*get_sdfc_version)(sdf_extension_t *, char *version);
     char *(*get_name)(sdf_extension_t *);
     char **(*preload)(sdf_extension_t *, sdf_file_t *);
     char *(*get_commit_id)(sdf_extension_t *);

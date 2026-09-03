@@ -95,6 +95,7 @@ static const char *dlpath(void *handle)
 void *sdf_extension_load(sdf_file_t *h)
 {
     sdf_extension_create_t *sdf_extension_create;
+    sdf_extension_t *ext;
     void *p;
 #if defined(_WIN32) || defined(__CYGWIN__)
     char *libname1 = "libsdf_extension.dll";
@@ -182,9 +183,32 @@ void *sdf_extension_load(sdf_file_t *h)
     p = LIBFUNC(sdf_global_extension_dlhandle, "sdf_extension_create");
     memcpy(&sdf_extension_create, &p, sizeof(p));
 
-    sdf_global_extension = sdf_extension_create(h);
+    ext = sdf_global_extension = sdf_extension_create(h);
 
     sdf_global_extension_path = strdup(dlpath(sdf_global_extension_dlhandle));
+
+    if (ext->get_sdfc_version) {
+        ext->get_sdfc_version(ext, error_buffer);
+        if (strcmp(error_buffer, SDF_LIB_FULLVERSION)) {
+            sprintf(error_buffer,
+                    "sdf_extension_load: %s needs to be rebuilt with %s",
+                    sdf_global_extension_path, SDF_LIB_FULLVERSION);
+            sdf_global_extension_failed = 1;
+         }
+    } else {
+        sprintf(error_buffer,
+                "sdf_extension_load: function get_sfdc_version not found in %s",
+                sdf_global_extension_path);
+        sdf_global_extension_failed = 1;
+    }
+    if (sdf_global_extension_failed) {
+        h->error_message = error_buffer;
+        printf("%s\n", error_buffer);
+        sdf_global_extension_failed = 1;
+        sdf_global_extension = NULL;
+        sdf_global_extension_refcount--;
+        return NULL;
+    }
 
     return sdf_global_extension;
 }
